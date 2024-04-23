@@ -1,0 +1,8 @@
+certifi==2024.2.2
+charset-normalizer==2.1.1
+construct==2.10.68
+idna==3.7
+pymp4 @ https://github.com/micaelsilva/pymp4/archive/master.zip#sha256=16ce107e090a0190b3722a7f14ed3f83860baabde7a8039148c1ade440dbaf7a
+requests==2.28.1
+urllib3==1.26.18
+xmltodict==0.13.0
