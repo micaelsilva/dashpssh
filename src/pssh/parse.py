@@ -23,7 +23,7 @@ def find_wv_pssh(par):
         if t['@schemeIdUri'].lower() == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed":
             return t["cenc:pssh"]["#text"] if isinstance(t["cenc:pssh"], dict) else t["cenc:pssh"]
 
-def get_pssh(mpd_url, firstsegment=False, segments=False, headers=False, proxy=False, mediatype="video"):
+def parse(content, base_uri=None, firstsegment=False, segments=False, headers=False, proxy=False, mediatype="video"):
     if proxy:
         s.proxies.update({"https": proxy, "http": proxy})
     if headers:
@@ -35,9 +35,9 @@ def get_pssh(mpd_url, firstsegment=False, segments=False, headers=False, proxy=F
         
     pssh = set()
     try:
-        r = s.get(url=mpd_url)
-        r.raise_for_status()
-        xml = xmltodict.parse(r.text)
+        #r = s.get(url=mpd_url)
+        #r.raise_for_status()
+        xml = xmltodict.parse(content)
         mpd = json.loads(json.dumps(xml))
         periods = mpd['MPD']['Period']
     except Exception as e:
@@ -106,19 +106,19 @@ def get_pssh(mpd_url, firstsegment=False, segments=False, headers=False, proxy=F
 
                 items_params = list( ad_set['SegmentTemplate']['SegmentTimeline'].items() )[0][1]
                 
-                rep_set["init"] = urljoin(r.url, ad_set['SegmentTemplate']['@initialization'].replace("$RepresentationID$", rep_set['@id']))
+                rep_set["init"] = urljoin(base_uri, ad_set['SegmentTemplate']['@initialization'].replace("$RepresentationID$", rep_set['@id']))
 
                 if firstsegment:
                     if isinstance(items_params, dict):
-                        rep_set["segments"] = [urljoin(r.url, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t']))]
+                        rep_set["segments"] = [urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t']))]
                     else:
-                        rep_set["segments"] = [urljoin(r.url, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params[0]['@t']))]
+                        rep_set["segments"] = [urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params[0]['@t']))]
 
                 if segments:
                     if isinstance(items_params, dict):
-                        rep_set["segments"] = [ urljoin(r.url, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t'])) ]
+                        rep_set["segments"] = [ urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t'])) ]
                     else:
-                        rep_set["segments"] = [ urljoin(r.url, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", i['@t'])) for i in items_params ]
+                        rep_set["segments"] = [ urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", i['@t'])) for i in items_params ]
 
                 options.append( rep_set )
 
@@ -143,7 +143,7 @@ def get_pssh(mpd_url, firstsegment=False, segments=False, headers=False, proxy=F
                     try:
                         box = Box.parse(data[pos:])
                     except Exception as e:
-                        print("StreamError")
+                        print(e)
                         break
                     else:
                         if box.type in [b'moov', b'moof']:
