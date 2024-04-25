@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import requests, xmltodict, json, time
-from urllib.parse import urljoin
+import os
+import xmltodict, json, time
+from urllib.parse import urljoin, urlsplit
 from pymp4.parser import Box
 from pymp4.util import BoxUtil
 from uuid import UUID
 from base64 import b64encode, b64decode
 
-s = requests.Session()
-s.timeout = 60
-s.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"})
-#s.verify = False 
+from dashpssh.httpclient import DefaultHTTPClient
+
+# s = requests.Session()
+# s.timeout = 60
+# s.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"})
 
 def pssh_kid(pssh):
     box = Box.parse(b64decode(pssh))
@@ -23,7 +25,85 @@ def find_wv_pssh(par):
         if t['@schemeIdUri'].lower() == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed":
             return t["cenc:pssh"]["#text"] if isinstance(t["cenc:pssh"], dict) else t["cenc:pssh"]
 
-def parse(content, base_uri=None, firstsegment=False, segments=False, headers=False, proxy=False, mediatype="video"):
+def load_content(uri):
+    if urlsplit(uri).scheme:
+        http_client = DefaultHTTPClient()
+        return http_client.download(uri, binary=True)[0] # content, base_uri =
+    else:
+        with open(uri, "rb") as fileobj:
+            content = fileobj.read()
+        return content
+
+def from_files(periods, mimeType, base_uri, psshtype):
+    options = []
+    if isinstance(periods, list):
+        periods = periods[-1]
+    for ad_set in periods['AdaptationSet']:
+        if ad_set['@mimeType'] == mimeType:
+            rep_set = ""
+            if isinstance(ad_set['Representation'], list):
+                for t in ad_set['Representation']:
+                    rep_set = t
+            else:
+                rep_set = ad_set['Representation']
+
+            items_params = list( ad_set['SegmentTemplate']['SegmentTimeline'].items() )[0][1]
+            
+            rep_set["init"] = urljoin(base_uri, ad_set['SegmentTemplate']['@initialization'].replace("$RepresentationID$", rep_set['@id']))
+
+            if psshtype == "firstsegment":
+                if isinstance(items_params, dict):
+                    rep_set["segments"] = [urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t']))]
+                else:
+                    rep_set["segments"] = [urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params[0]['@t']))]
+
+            if psshtype == "segments":
+                if isinstance(items_params, dict):
+                    rep_set["segments"] = [ urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t'])) ]
+                else:
+                    rep_set["segments"] = [ urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", i['@t'])) for i in items_params ]
+
+            options.append( rep_set )
+
+    pssh = set()
+
+    match psshtype:
+        case "firstsegment":
+            urls = [ options[-1]['segments'][0] ]
+        case "segments":
+            urls = options[-1]['segments']
+        case _:
+            urls = [ options[-1]['init'] ]
+
+    for i in urls:
+        content = load_content(i)
+        
+        pos = 0
+        init_data = None
+        init_segment = b''
+        data = content
+        while data[pos:]:
+            if init_data is None:
+                try:
+                    box = Box.parse(data[pos:])
+                except Exception as e:
+                    #print(e)
+                    break
+                else:
+                    if box.type in [b'moov', b'moof']:
+                        for pssh_box, _ in BoxUtil.find(box, b'pssh'):
+                            if pssh_box.box_body.system_ID == UUID('edef8ba9-79d6-4ace-a3c8-27dcd51d21ed'):
+                                pssh.add(b64encode(Box.build(pssh_box)).decode("utf-8"))
+                    else:
+                        init_segment += data[pos : pos + box.length]
+                    pos += box.length
+            else:
+                init_segment += data[pos:]
+                break
+        time.sleep(1)
+    return pssh
+
+def parse(content, base_uri=None, psshtype=False, headers=False, proxy=False, mediatype="video"):
     if proxy:
         s.proxies.update({"https": proxy, "http": proxy})
     if headers:
@@ -92,72 +172,7 @@ def parse(content, base_uri=None, firstsegment=False, segments=False, headers=Fa
     except Exception:
         pass                      
     if not pssh:
-        options = []
-        if isinstance(periods, list):
-            periods = periods[-1]
-        for ad_set in periods['AdaptationSet']:
-            if ad_set['@mimeType'] == mimeType:
-                rep_set = ""
-                if isinstance(ad_set['Representation'], list):
-                    for t in ad_set['Representation']:
-                        rep_set = t
-                else:
-                    rep_set = ad_set['Representation']
-
-                items_params = list( ad_set['SegmentTemplate']['SegmentTimeline'].items() )[0][1]
-                
-                rep_set["init"] = urljoin(base_uri, ad_set['SegmentTemplate']['@initialization'].replace("$RepresentationID$", rep_set['@id']))
-
-                if firstsegment:
-                    if isinstance(items_params, dict):
-                        rep_set["segments"] = [urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t']))]
-                    else:
-                        rep_set["segments"] = [urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params[0]['@t']))]
-
-                if segments:
-                    if isinstance(items_params, dict):
-                        rep_set["segments"] = [ urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t'])) ]
-                    else:
-                        rep_set["segments"] = [ urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", i['@t'])) for i in items_params ]
-
-                options.append( rep_set )
-
-        pssh = set()
-
-        if firstsegment:
-            urls = [ options[-1]['segments'][0] ]
-        elif segments:
-            urls = options[-1]['segments']
-        else:
-            urls = [ options[-1]['init'] ]
-
-        for i in urls:
-            r1 = s.get(url=i)
-            
-            pos = 0
-            init_data = None
-            init_segment = b''
-            data = r1.content
-            while data[pos:]:
-                if init_data is None:
-                    try:
-                        box = Box.parse(data[pos:])
-                    except Exception as e:
-                        print(e)
-                        break
-                    else:
-                        if box.type in [b'moov', b'moof']:
-                            for pssh_box, _ in BoxUtil.find(box, b'pssh'):
-                                if pssh_box.box_body.system_ID == UUID('edef8ba9-79d6-4ace-a3c8-27dcd51d21ed'):
-                                    pssh.add(b64encode(Box.build(pssh_box)).decode("utf-8"))
-                        else:
-                            init_segment += data[pos : pos + box.length]
-                        pos += box.length
-                else:
-                    init_segment += data[pos:]
-                    break
-
-            time.sleep(1)
+        pssh = from_files(periods, mimeType, base_uri, psshtype)
     return pssh
 
 if __name__ == '__main__':
@@ -172,7 +187,7 @@ if __name__ == '__main__':
     head = {x.split("=", 1)[0]: x.split("=", 1)[1] for x in args.headers.split("&")} if args.headers else False
 
     if args.mpd:
-        pssh = get_pssh(args.mpd, firstsegment=args.rotation, headers=head)
+        pssh = get_pssh(args.mpd, psshtype=args.rotation, headers=head)
         if args.kid:
             for i in pssh:
                 print( pssh_kid(i) )

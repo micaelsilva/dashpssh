@@ -1,3 +1,11 @@
+[tool.poetry]
+name = "dashpssh"
+version = "1.0.0"
+description = "PSSH parser for DASH manifests"
+authors = ["Micael Silva <micaelsilva@gmail.com>"]
+license = "Apache 2.0"
+readme = "README.md"
+
 [build-system]
 requires = ["setuptools>=42.0", "wheel"]
 build-backend = "setuptools.build_meta"
