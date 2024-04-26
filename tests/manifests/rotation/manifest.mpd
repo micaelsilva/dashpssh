@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<MPD profiles="urn:mpeg:dash:profile:isoff-live:2011" type="dynamic" availabilityStartTime="2011-03-01T00:00:08Z" minimumUpdatePeriod="PT2.0S" minBufferTime="PT2.0S" publishTime="2024-04-23T18:30:37.416Z" timeShiftBufferDepth="PT2M" suggestedPresentationDelay="PT2.0S" xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:cenc="urn:mpeg:cenc:2013" xmlns:mspr="urn:microsoft:playready" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd">
+	<Period start="PT0S" id="1">
+		<AdaptationSet mimeType="video/mp4" startWithSAP="1" segmentAlignment="true" par="16:9">
+			<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc" />
+			<ContentProtection schemeIdUri="urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95"></ContentProtection>
+			<ContentProtection schemeIdUri="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"></ContentProtection>
+			<SegmentTemplate timescale="10000000" presentationTimeOffset="0" media="$RepresentationID$-Segment-$Time$.m4v" initialization="$RepresentationID$_init.m4i">
+				<SegmentTimeline>
+					<S t="4149593192926934" d="20020000" r="58" />
+				</SegmentTimeline>
+			</SegmentTemplate>
+			<Representation width="398" height="224" frameRate="30000/1001" codecs="avc1.64000d" scanType="progressive" sar="1791:1792" id="stream_01" bandwidth="360000" />
+			<Representation width="1920" height="1080" frameRate="30000/1001" codecs="avc1.640029" scanType="progressive" sar="1:1" id="stream_06" bandwidth="4500000" />
+		</AdaptationSet>
+		<AdaptationSet mimeType="audio/mp4" startWithSAP="1" lang="dub" segmentAlignment="true">
+			<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc" />
+			<ContentProtection schemeIdUri="urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95"></ContentProtection>
+			<ContentProtection schemeIdUri="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"></ContentProtection>
+			<SegmentTemplate timescale="10000000" presentationTimeOffset="0" media="$RepresentationID$-Segment-$Time$.m4a" initialization="$RepresentationID$_init.m4i">
+				<SegmentTimeline>
+					<S t="4149593194060268" d="19200000" />
+				</SegmentTimeline>
+			</SegmentTemplate>
+			<Representation audioSamplingRate="48000" codecs="mp4a.40.2" id="stream_08" bandwidth="96000" />
+		</AdaptationSet>
+		<AdaptationSet mimeType="audio/mp4" startWithSAP="1" lang="eng" segmentAlignment="true">
+			<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc" />
+			<ContentProtection schemeIdUri="urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95"></ContentProtection>
+			<ContentProtection schemeIdUri="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"></ContentProtection>
+			<SegmentTemplate timescale="10000000" presentationTimeOffset="0" media="$RepresentationID$-Segment-$Time$.m4a" initialization="$RepresentationID$_init.m4i">
+				<SegmentTimeline>
+					<S t="4149593194060268" d="19200000" />
+				</SegmentTimeline>
+			</SegmentTemplate>
+			<Representation audioSamplingRate="48000" codecs="mp4a.40.2" id="stream_07" bandwidth="96000" />
+		</AdaptationSet>
+		<AdaptationSet mimeType="application/mp4" startWithSAP="1" lang="por" segmentAlignment="true">
+			<Role schemeIdUri="urn:mpeg:dash:role:2011" value="subtitle" />
+			<SegmentTemplate timescale="10000000" presentationTimeOffset="0" media="$RepresentationID$-Segment-$Time$.m4s" initialization="$RepresentationID$_init.m4i">
+				<SegmentTimeline>
+					<S t="4149593192926934" d="20020000" r="58" />
+				</SegmentTimeline>
+			</SegmentTemplate>
+			<Representation codecs="stpp" id="stream_09" bandwidth="15000" />
+		</AdaptationSet>
+	</Period>
+</MPD>

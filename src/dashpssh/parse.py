@@ -103,11 +103,11 @@ def from_files(periods, mimeType, base_uri, psshtype):
         time.sleep(1)
     return pssh
 
-def parse(content, base_uri=None, psshtype=False, headers=False, proxy=False, mediatype="video"):
-    if proxy:
-        s.proxies.update({"https": proxy, "http": proxy})
-    if headers:
-        s.headers.update(headers)
+def parse(content, base_uri=None, psshtype=False, http_client=False, headers=False, proxy=False, mediatype="video"):
+    # if proxy:
+    #     s.proxies.update({"https": proxy, "http": proxy})
+    # if headers:
+    #     s.headers.update(headers)
     if mediatype == "video":
         mimeType = 'video/mp4'
     elif mediatype == "audio":
@@ -135,14 +135,14 @@ def parse(content, base_uri=None, psshtype=False, headers=False, proxy=False, me
                                 if t != None:
                                     pssh.add(t)
 
-                            except Exception:
+                            except Exception as e:
                                 pass
                             try:
                                 for rep_set in ad_set['Representation']:
                                     t = find_wv_pssh(rep_set)
                                     if t != None:
                                         pssh.add(t)
-                            except Exception:
+                            except Exception as e:
                                 pass 
                 else:
                     if period['AdaptationSet']['@mimeType'] == mimeType:

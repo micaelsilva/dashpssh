@@ -1,18 +1,18 @@
-[tool.poetry]
+[project]
 name = "dashpssh"
-version = "1.0.0"
-description = "PSSH parser for DASH manifests"
-authors = ["Micael Silva <micaelsilva@gmail.com>"]
-license = "Apache 2.0"
-readme = "README.md"
-packages = [
-    { include = "dashpssh", from = "src" }
+version = "0.0.1"
+authors = [
+  { name="Micael Silva", email="micaelsilva@gmail.com" },
 ]
-
-include = [
-    { path = "tests", format = "sdist" }
+description = "PSSH parser for DASH manifests"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
 ]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
