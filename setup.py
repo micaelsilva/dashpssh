@@ -13,7 +13,7 @@ setup(
     zip_safe=False,
     include_package_data=True,
     install_requires=install_reqs,
-    packages=["m3u8"],
+    packages=["dashpssh"],
     url="https://github.com/micaelsilva/dashpssh",
     description="PSSH parser for DASH manifestsr",
     python_requires=">=3.7",
