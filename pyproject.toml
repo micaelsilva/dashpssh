@@ -5,7 +5,14 @@ description = "PSSH parser for DASH manifests"
 authors = ["Micael Silva <micaelsilva@gmail.com>"]
 license = "Apache 2.0"
 readme = "README.md"
+packages = [
+    { include = "dashpssh", from = "src" }
+]
+
+include = [
+    { path = "tests", format = "sdist" }
+]
 
 [build-system]
-requires = ["setuptools>=42.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
