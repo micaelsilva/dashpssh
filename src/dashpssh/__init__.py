@@ -11,11 +11,11 @@ def load(
         psshtype=False,
         timeout=20,
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"},
-        http_client=DefaultHTTPClient(),
         verify_ssl=True,
     ):
+    http_client=DefaultHTTPClient(headers=headers, verify_ssl=verify_ssl)
     if urlsplit(uri).scheme:
-        content, base_uri = http_client.download(uri, timeout, headers, verify_ssl)
+        content, base_uri = http_client.download(uri, timeout)
     else:
         with open(uri, encoding="utf8") as fileobj:
             content = fileobj.read().strip()

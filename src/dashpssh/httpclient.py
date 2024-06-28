@@ -8,14 +8,16 @@ from urllib.parse import urljoin
 
 
 class DefaultHTTPClient:
-    def __init__(self, proxies=None):
+    def __init__(self, proxies=None, headers={}, verify_ssl=True):
         self.proxies = proxies
+        self.verify_ssl = verify_ssl
+        self.headers = headers
 
-    def download(self, uri, timeout=None, headers={}, verify_ssl=True, binary=False):
+    def download(self, uri, timeout=None, binary=False):
         proxy_handler = urllib.request.ProxyHandler(self.proxies)
-        https_handler = HTTPSHandler(verify_ssl=verify_ssl)
+        https_handler = HTTPSHandler(verify_ssl=self.verify_ssl)
         opener = urllib.request.build_opener(proxy_handler, https_handler)
-        opener.addheaders = headers.items()
+        opener.addheaders = self.headers.items()
         resource = opener.open(uri, timeout=timeout)
         base_uri = urljoin(resource.geturl(), ".")
         content = resource.read() if binary else resource.read().decode(

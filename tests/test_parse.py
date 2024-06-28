@@ -23,6 +23,11 @@ class PsshTests(unittest.TestCase):
       dashpssh.load("tests/manifests/fixed/manifest.mpd"),
          {'AAAAcXBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAFEIARIQPOwbHql5ndpVluZPN+XtIBoVdmVyaW1hdHJpeGNhYmxldmlzaW9uIh5yPXZteF93aWRld2luZV9UZWxlZmVIRFImcz05NTAqAlNEOAA='},
       )
+  def test_rotation_init_remote(self):
+    self.assertEqual(
+      dashpssh.load('https://d2v2nfykyiu7vc.cloudfront.net/Content/Channel/SPOTRV/dsc3/manifest.mpd', headers={"Referer": "https://www.clarotvmais.com.br/"}, psshtype="init"),
+         {'AAAAZnBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAEYIARIQ2zGnzrWXCgyrugvuMeTAPhoPdmVyaW1hdHJpeGNsYXJvIhhyPVNQT1RSVl9kYXNoX2NlJnM9MjMyMDYqBVNEX0hE'},
+      )
   def test_rotation_init(self):
     self.assertEqual(
       dashpssh.load("tests/manifests/rotation/manifest.mpd", psshtype="init"),

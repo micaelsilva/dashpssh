@@ -11,10 +11,6 @@ from base64 import b64encode, b64decode
 
 from dashpssh.httpclient import DefaultHTTPClient
 
-# s = requests.Session()
-# s.timeout = 60
-# s.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"})
-
 def pssh_kid(pssh):
     box = Box.parse(b64decode(pssh))
     for pssh_box, _ in BoxUtil.find(box, b'pssh'):
@@ -25,16 +21,15 @@ def find_wv_pssh(par):
         if t['@schemeIdUri'].lower() == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed":
             return t["cenc:pssh"]["#text"] if isinstance(t["cenc:pssh"], dict) else t["cenc:pssh"]
 
-def load_content(uri):
+def load_content(uri, http_client):
     if urlsplit(uri).scheme:
-        http_client = DefaultHTTPClient()
         return http_client.download(uri, binary=True)[0] # content, base_uri =
     else:
         with open(uri, "rb") as fileobj:
             content = fileobj.read()
         return content
 
-def from_files(periods, mimeType, base_uri, psshtype):
+def from_files(periods, http_client, mimeType, base_uri, psshtype):
     options = []
     if isinstance(periods, list):
         periods = periods[-1]
@@ -76,7 +71,7 @@ def from_files(periods, mimeType, base_uri, psshtype):
             urls = [ options[-1]['init'] ]
 
     for i in urls:
-        content = load_content(i)
+        content = load_content(i, http_client)
         
         pos = 0
         init_data = None
@@ -103,11 +98,7 @@ def from_files(periods, mimeType, base_uri, psshtype):
         time.sleep(1)
     return pssh
 
-def parse(content, base_uri=None, psshtype=False, http_client=False, headers=False, proxy=False, mediatype="video"):
-    # if proxy:
-    #     s.proxies.update({"https": proxy, "http": proxy})
-    # if headers:
-    #     s.headers.update(headers)
+def parse(content, base_uri=None, psshtype=False, http_client=False, mediatype="video"):
     if mediatype == "video":
         mimeType = 'video/mp4'
     elif mediatype == "audio":
@@ -122,8 +113,6 @@ def parse(content, base_uri=None, psshtype=False, http_client=False, headers=Fal
         periods = mpd['MPD']['Period']
     except Exception as e:
         return False
-        #pssh = input(f'\nUnable to find PSSH in MPD: {e}. \nEdit getPSSH.py or enter PSSH manually: ')
-        #return pssh
     try: 
         if isinstance(periods, list):
             for idx, period in enumerate(periods):
@@ -172,7 +161,7 @@ def parse(content, base_uri=None, psshtype=False, http_client=False, headers=Fal
     except Exception:
         pass                      
     if not pssh:
-        pssh = from_files(periods, mimeType, base_uri, psshtype)
+        pssh = from_files(periods, http_client, mimeType, base_uri, psshtype)
     return pssh
 
 if __name__ == '__main__':
@@ -187,7 +176,7 @@ if __name__ == '__main__':
     head = {x.split("=", 1)[0]: x.split("=", 1)[1] for x in args.headers.split("&")} if args.headers else False
 
     if args.mpd:
-        pssh = get_pssh(args.mpd, psshtype=args.rotation, headers=head)
+        pssh = parse(args.mpd, psshtype=args.rotation, http_client=DefaultHTTPClient(headers=head) )
         if args.kid:
             for i in pssh:
                 print( pssh_kid(i) )
