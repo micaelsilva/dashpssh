@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import xmltodict, json, time
+import xmltodict
+import json
+import time
 from urllib.parse import urljoin, urlsplit
 from pymp4.parser import Box
 from pymp4.util import BoxUtil
@@ -11,25 +12,44 @@ from base64 import b64encode, b64decode
 
 from dashpssh.httpclient import DefaultHTTPClient
 
-def pssh_kid(pssh):
+
+WV_UUID = "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+
+
+def pssh_kid(pssh) -> str:
+    """
+    Return KID from parsing the PSSH
+    """
     box = Box.parse(b64decode(pssh))
     for pssh_box, _ in BoxUtil.find(box, b'pssh'):
         return pssh_box.box_body.init_data[4:20].hex()
 
-def find_wv_pssh(par):
+
+def find_wv_pssh(par) -> str:
+    """
+    Find a WV PSSH and return
+    """
     for t in par['ContentProtection']:
-        if t['@schemeIdUri'].lower() == "urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed":
+        if t['@schemeIdUri'].lower() == f"urn:uuid:{WV_UUID}":
             return t["cenc:pssh"]["#text"] if isinstance(t["cenc:pssh"], dict) else t["cenc:pssh"]
 
-def load_content(uri, http_client):
+
+def load_content(uri, http_client) -> str:
+    """
+    Load a file to parse
+    """
     if urlsplit(uri).scheme:
-        return http_client.download(uri, binary=True)[0] # content, base_uri =
+        return http_client.download(uri, binary=True)[0]
     else:
         with open(uri, "rb") as fileobj:
             content = fileobj.read()
         return content
 
-def from_files(periods, http_client, mimeType, base_uri, psshtype):
+
+def from_files(periods, http_client, mimeType, base_uri, psshtype) -> str:
+    """
+    Locate files to parse and parse them to return PSSH
+    """
     options = []
     if isinstance(periods, list):
         periods = periods[-1]
@@ -42,8 +62,8 @@ def from_files(periods, http_client, mimeType, base_uri, psshtype):
             else:
                 rep_set = ad_set['Representation']
 
-            items_params = list( ad_set['SegmentTemplate']['SegmentTimeline'].items() )[0][1]
-            
+            items_params = list(ad_set['SegmentTemplate']['SegmentTimeline'].items())[0][1]
+
             rep_set["init"] = urljoin(base_uri, ad_set['SegmentTemplate']['@initialization'].replace("$RepresentationID$", rep_set['@id']))
 
             if psshtype == "firstsegment":
@@ -58,39 +78,36 @@ def from_files(periods, http_client, mimeType, base_uri, psshtype):
                 else:
                     rep_set["segments"] = [ urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", i['@t'])) for i in items_params ]
 
-            options.append( rep_set )
+            options.append(rep_set)
 
     pssh = set()
 
     match psshtype:
         case "firstsegment":
-            urls = [ options[-1]['segments'][0] ]
+            urls = [options[-1]['segments'][0]]
         case "segments":
             urls = options[-1]['segments']
         case _:
-            urls = [ options[-1]['init'] ]
+            urls = [options[-1]['init']]
 
     for i in urls:
-        content = load_content(i, http_client)
-        
+        data = load_content(i, http_client)
         pos = 0
         init_data = None
         init_segment = b''
-        data = content
         while data[pos:]:
             if init_data is None:
                 try:
                     box = Box.parse(data[pos:])
-                except Exception as e:
-                    #print(e)
+                except Exception:
                     break
                 else:
                     if box.type in [b'moov', b'moof']:
                         for pssh_box, _ in BoxUtil.find(box, b'pssh'):
-                            if pssh_box.box_body.system_ID == UUID('edef8ba9-79d6-4ace-a3c8-27dcd51d21ed'):
+                            if pssh_box.box_body.system_ID == UUID(WV_UUID):
                                 pssh.add(b64encode(Box.build(pssh_box)).decode("utf-8"))
                     else:
-                        init_segment += data[pos : pos + box.length]
+                        init_segment += data[pos:pos + box.length]
                     pos += box.length
             else:
                 init_segment += data[pos:]
@@ -98,22 +115,29 @@ def from_files(periods, http_client, mimeType, base_uri, psshtype):
         time.sleep(1)
     return pssh
 
-def parse(content, base_uri=None, psshtype=False, http_client=False, mediatype="video"):
+
+def parse(
+        content,
+        base_uri=None,
+        psshtype=False,
+        http_client=False,
+        mediatype="video") -> str:
+    """
+    Parse manifest MPD and return PSSH
+    """
     if mediatype == "video":
         mimeType = 'video/mp4'
     elif mediatype == "audio":
         mimeType = 'audio/mp4'
-        
+
     pssh = set()
     try:
-        #r = s.get(url=mpd_url)
-        #r.raise_for_status()
         xml = xmltodict.parse(content)
         mpd = json.loads(json.dumps(xml))
         periods = mpd['MPD']['Period']
-    except Exception as e:
+    except Exception:
         return False
-    try: 
+    try:
         if isinstance(periods, list):
             for idx, period in enumerate(periods):
                 if isinstance(period['AdaptationSet'], list):
@@ -121,32 +145,32 @@ def parse(content, base_uri=None, psshtype=False, http_client=False, mediatype="
                         if ad_set['@mimeType'] == mimeType:
                             try:
                                 t = find_wv_pssh(ad_set)
-                                if t != None:
+                                if t is not None:
                                     pssh.add(t)
 
-                            except Exception as e:
+                            except Exception:
                                 pass
                             try:
                                 for rep_set in ad_set['Representation']:
                                     t = find_wv_pssh(rep_set)
-                                    if t != None:
+                                    if t is not None:
                                         pssh.add(t)
-                            except Exception as e:
-                                pass 
+                            except Exception:
+                                pass
                 else:
                     if period['AdaptationSet']['@mimeType'] == mimeType:
                         try:
                             t = find_wv_pssh(period['AdaptationSet'])
-                            if t != None:
+                            if t is not None:
                                 pssh.add(t)
                         except Exception:
-                            pass   
+                            pass
         else:
             for ad_set in periods['AdaptationSet']:
                 if ad_set['@mimeType'] == 'video/mp4':
                     try:
                         t = find_wv_pssh(ad_set)
-                        if t != None:
+                        if t is not None:
                             pssh.add(t)
                     except Exception:
                         pass
@@ -154,31 +178,54 @@ def parse(content, base_uri=None, psshtype=False, http_client=False, mediatype="
                     try:
                         for rep_set in ad_set['Representation']:
                             t = find_wv_pssh(rep_set)
-                            if t != None:
+                            if t is not None:
                                 pssh.add(t)
                     except Exception:
-                        pass 
+                        pass
     except Exception:
-        pass                      
+        pass
     if not pssh:
         pssh = from_files(periods, http_client, mimeType, base_uri, psshtype)
     return pssh
 
+
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(prog='pssh', description='Parse PSSH from DASH manifests')
-    parser.add_argument('--rotation', action='store_true', default=False, help='If true look out for PSSH boxes in the fragments, used in rotation key schemes')
-    parser.add_argument('--mpd', default=False, help='URL of the manifest MPD')
-    parser.add_argument('--kid', action='store_true', default=False, help='print KID from PSSH')
-    parser.add_argument('--headers', default=False, help='Pass headers to the MPD request. Use: \'Referer=https://somesite.com/&Origin=https://somesite.com/\'')
+    parser = argparse.ArgumentParser(
+        prog='pssh',
+        description='Parse PSSH from DASH manifests')
+    parser.add_argument(
+        '-r',
+        '--rotation',
+        action='store_true',
+        default=False,
+        help='If true look out for PSSH boxes in the fragments, used in rotation key schemes')
+    parser.add_argument(
+        '--mpd',
+        default=False,
+        help='URL of the manifest MPD')
+    parser.add_argument(
+        '-k',
+        '--kid',
+        action='store_true',
+        default=False,
+        help='print KID from PSSH')
+    parser.add_argument(
+        '-h',
+        '--headers',
+        default=False,
+        help='Pass headers to the MPD request. Use: \'Referer=https://somesite.com/&Origin=https://somesite.com/\'')
     args = parser.parse_args()
 
     head = {x.split("=", 1)[0]: x.split("=", 1)[1] for x in args.headers.split("&")} if args.headers else False
 
     if args.mpd:
-        pssh = parse(args.mpd, psshtype=args.rotation, http_client=DefaultHTTPClient(headers=head) )
+        pssh = parse(
+            args.mpd,
+            psshtype=args.rotation,
+            http_client=DefaultHTTPClient(headers=head))
         if args.kid:
             for i in pssh:
-                print( pssh_kid(i) )
+                print(pssh_kid(i))
         else:
-            print (pssh)
+            print(pssh)
