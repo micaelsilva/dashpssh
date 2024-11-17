@@ -2,7 +2,7 @@
 name = "dashpssh"
 version = "0.0.1"
 authors = [
-  { name="Micael Silva", email="micaelsilva@gmail.com" },
+  { name="Micael Silva", email="374220+micaelsilva@users.noreply.github.com" },
 ]
 description = "PSSH parser for DASH manifests"
 readme = "README.md"
@@ -11,6 +11,16 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+]
+dependencies = [
+  "certifi==2024.2.2",
+  "charset-normalizer==2.1.1",
+  "construct<=2.10.69",
+  "idna==3.7",
+  "pymp4 @ git+https://github.com/micaelsilva/pymp4.git@d60c17640d39cd1255c4ac99cdecd824ad0a8a61",
+  "requests==2.28.1",
+  "urllib3==1.26.18",
+  "xmltodict==0.13.0",
 ]
 
 [build-system]
