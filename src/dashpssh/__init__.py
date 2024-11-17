@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import os
-import dashpssh.parse
 from urllib.parse import urlsplit
-from dashpssh.httpclient import DefaultHTTPClient
 from urllib.error import HTTPError, URLError
 from http.client import RemoteDisconnected
+
+import dashpssh.parse
+from dashpssh.httpclient import DefaultHTTPClient
+from dashpssh.parse import PsshType
 
 
 def load(

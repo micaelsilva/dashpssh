@@ -4,16 +4,35 @@
 import xmltodict
 import json
 import time
+import argparse
+import logging
 from urllib.parse import urljoin, urlsplit
-from pymp4.parser import Box
-from pymp4.util import BoxUtil
 from uuid import UUID
 from base64 import b64encode, b64decode
+from enum import Enum
+
+from pymp4.parser import Box
+from pymp4.util import BoxUtil
 
 from dashpssh.httpclient import DefaultHTTPClient
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.ERROR)
+
 
 WV_UUID = "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+
+
+class PsshType(Enum):
+    MANIFEST = "manifest"
+    INIT = "init"
+    FIRSTSEGMENT = "firstsegment"
+    SEGMENTS = "segments"
+
+
+class MimeType(Enum):
+    VIDEO = "video/mp4"
+    AUDIO = "audio/mp4"
 
 
 def pssh_kid(pssh) -> str:
@@ -25,13 +44,13 @@ def pssh_kid(pssh) -> str:
         return pssh_box.box_body.init_data[4:20].hex()
 
 
-def find_wv_pssh(par) -> str:
+def find_wv_pssh(par: dict, set_: set) -> None:
     """
     Find a WV PSSH and return
     """
-    for t in par['ContentProtection']:
-        if t['@schemeIdUri'].lower() == f"urn:uuid:{WV_UUID}":
-            return t["cenc:pssh"]["#text"] if isinstance(t["cenc:pssh"], dict) else t["cenc:pssh"]
+    for item in par['ContentProtection']:
+        if item['@schemeIdUri'].lower() == f"urn:uuid:{WV_UUID}":
+            set_.add(item["cenc:pssh"]["#text"] if isinstance(item["cenc:pssh"], dict) else item["cenc:pssh"])
 
 
 def load_content(uri, http_client) -> str:
@@ -46,7 +65,12 @@ def load_content(uri, http_client) -> str:
         return content
 
 
-def from_files(periods, http_client, mimeType, base_uri, psshtype) -> str:
+def from_files(
+        periods,
+        http_client,
+        mime_type,
+        base_uri,
+        psshtype=PsshType.MANIFEST) -> str:
     """
     Locate files to parse and parse them to return PSSH
     """
@@ -54,41 +78,66 @@ def from_files(periods, http_client, mimeType, base_uri, psshtype) -> str:
     if isinstance(periods, list):
         periods = periods[-1]
     for ad_set in periods['AdaptationSet']:
-        if ad_set['@mimeType'] == mimeType:
-            rep_set = ""
+        if ad_set['@mimeType'] == mime_type:
+            rep_set = str()
             if isinstance(ad_set['Representation'], list):
-                for t in ad_set['Representation']:
-                    rep_set = t
+                rep_set = next(t for t in ad_set['Representation'])
             else:
                 rep_set = ad_set['Representation']
+            # logger.debug(f"Representation: {rep_set}")
 
-            items_params = list(ad_set['SegmentTemplate']['SegmentTimeline'].items())[0][1]
+            items_params = list(
+                ad_set['SegmentTemplate']['SegmentTimeline'].items())[0][1]
 
-            rep_set["init"] = urljoin(base_uri, ad_set['SegmentTemplate']['@initialization'].replace("$RepresentationID$", rep_set['@id']))
+            rep_set["init"] = urljoin(
+                base_uri,
+                ad_set['SegmentTemplate']['@initialization'].replace(
+                    "$RepresentationID$",
+                    rep_set['@id']))
 
-            if psshtype == "firstsegment":
+            _adset_media = ad_set['SegmentTemplate']['@media'].replace(
+                "$RepresentationID$",
+                rep_set['@id'])
+
+            if psshtype == PsshType.FIRSTSEGMENT:
                 if isinstance(items_params, dict):
-                    rep_set["segments"] = [urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t']))]
+                    item_ = items_params
                 else:
-                    rep_set["segments"] = [urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params[0]['@t']))]
+                    item_ = items_params[0]
 
-            if psshtype == "segments":
+                rep_set["segments"] = [
+                    urljoin(
+                        base_uri,
+                        _adset_media.replace(
+                            "$Time$",
+                            item_['@t']))
+                ]
+
+            if psshtype == PsshType.SEGMENTS:
                 if isinstance(items_params, dict):
-                    rep_set["segments"] = [ urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", items_params['@t'])) ]
+                    rep_set["segments"] = [
+                        urljoin(
+                            base_uri,
+                            _adset_media.replace("$Time$", items_params['@t']))
+                    ]
                 else:
-                    rep_set["segments"] = [ urljoin(base_uri, ad_set['SegmentTemplate']['@media'].replace("$RepresentationID$", rep_set['@id']).replace("$Time$", i['@t'])) for i in items_params ]
+                    rep_set["segments"] = [
+                        urljoin(
+                            base_uri,
+                            _adset_media.replace("$Time$", i['@t']))
+                        for i in items_params
+                    ]
 
             options.append(rep_set)
 
     pssh = set()
 
-    match psshtype:
-        case "firstsegment":
-            urls = [options[-1]['segments'][0]]
-        case "segments":
-            urls = options[-1]['segments']
-        case _:
-            urls = [options[-1]['init']]
+    if psshtype == PsshType.FIRSTSEGMENT:
+        urls = [options[-1]['segments'][0]]
+    elif psshtype == PsshType.SEGMENTS:
+        urls = options[-1]['segments']
+    else:
+        urls = [options[-1]['init']]
 
     for i in urls:
         data = load_content(i, http_client)
@@ -105,14 +154,17 @@ def from_files(periods, http_client, mimeType, base_uri, psshtype) -> str:
                     if box.type in [b'moov', b'moof']:
                         for pssh_box, _ in BoxUtil.find(box, b'pssh'):
                             if pssh_box.box_body.system_ID == UUID(WV_UUID):
-                                pssh.add(b64encode(Box.build(pssh_box)).decode("utf-8"))
+                                pssh.add(
+                                    b64encode(
+                                        Box.build(pssh_box)
+                                    ).decode("utf-8"))
                     else:
                         init_segment += data[pos:pos + box.length]
                     pos += box.length
             else:
                 init_segment += data[pos:]
                 break
-        time.sleep(1)
+        time.sleep(0.5)
     return pssh
 
 
@@ -121,78 +173,66 @@ def parse(
         base_uri=None,
         psshtype=False,
         http_client=False,
-        mediatype="video") -> str:
+        mediatype=MimeType.VIDEO) -> str:
     """
     Parse manifest MPD and return PSSH
     """
-    if mediatype == "video":
-        mimeType = 'video/mp4'
-    elif mediatype == "audio":
-        mimeType = 'audio/mp4'
-
     pssh = set()
     try:
         xml = xmltodict.parse(content)
         mpd = json.loads(json.dumps(xml))
         periods = mpd['MPD']['Period']
-    except Exception:
-        return False
+    except Exception as e:
+        logger.error(e.with_traceback)
     try:
         if isinstance(periods, list):
-            for idx, period in enumerate(periods):
+            for _, period in enumerate(periods):
                 if isinstance(period['AdaptationSet'], list):
                     for ad_set in period['AdaptationSet']:
-                        if ad_set['@mimeType'] == mimeType:
+                        if ad_set['@mimeType'] == mediatype.value:
                             try:
-                                t = find_wv_pssh(ad_set)
-                                if t is not None:
-                                    pssh.add(t)
-
-                            except Exception:
-                                pass
-                            try:
-                                for rep_set in ad_set['Representation']:
-                                    t = find_wv_pssh(rep_set)
-                                    if t is not None:
-                                        pssh.add(t)
-                            except Exception:
-                                pass
+                                find_wv_pssh(ad_set, pssh)
+                            except KeyError as e:
+                                logger.debug(f"Mising key {e} in adaptation set. Looking for representations next.")
+                                try:
+                                    for rep_set in ad_set['Representation']:
+                                        find_wv_pssh(rep_set, pssh)
+                                except KeyError as e:
+                                    logger.debug(f"Mising key {e} in representations sets. Looking for media segments next.")
                 else:
-                    if period['AdaptationSet']['@mimeType'] == mimeType:
+                    if period['AdaptationSet']['@mimeType'] == mediatype.value:
                         try:
-                            t = find_wv_pssh(period['AdaptationSet'])
-                            if t is not None:
-                                pssh.add(t)
-                        except Exception:
-                            pass
+                            find_wv_pssh(period['AdaptationSet'], pssh)
+                        except KeyError as e:
+                            logger.debug(f"Mising key {e} in representations sets. Looking for media segments next.")
         else:
             for ad_set in periods['AdaptationSet']:
-                if ad_set['@mimeType'] == 'video/mp4':
+                if ad_set['@mimeType'] == mediatype.value:
                     try:
-                        t = find_wv_pssh(ad_set)
-                        if t is not None:
-                            pssh.add(t)
-                    except Exception:
-                        pass
+                        find_wv_pssh(ad_set, pssh)
+                    except KeyError as e:
+                        logger.debug(f"Mising key {e} in adaptation set. Looking for representations next.")
+                        try:
+                            for rep_set in ad_set['Representation']:
+                                find_wv_pssh(rep_set, pssh)
+                        except KeyError as e:
+                            logger.debug(f"Mising key {e} in representations sets. Looking for media segments next.")
 
-                    try:
-                        for rep_set in ad_set['Representation']:
-                            t = find_wv_pssh(rep_set)
-                            if t is not None:
-                                pssh.add(t)
-                    except Exception:
-                        pass
-    except Exception:
-        pass
+    except KeyError as e:
+        logger.error(e.with_traceback)
     if not pssh:
-        pssh = from_files(periods, http_client, mimeType, base_uri, psshtype)
+        pssh = from_files(
+            periods,
+            http_client,
+            mediatype.value,
+            base_uri,
+            psshtype)
     return pssh
 
 
 if __name__ == '__main__':
-    import argparse
     parser = argparse.ArgumentParser(
-        prog='pssh',
+        prog='dashpssh',
         description='Parse PSSH from DASH manifests')
     parser.add_argument(
         '-r',
@@ -217,7 +257,9 @@ if __name__ == '__main__':
         help='Pass headers to the MPD request. Use: \'Referer=https://somesite.com/&Origin=https://somesite.com/\'')
     args = parser.parse_args()
 
-    head = {x.split("=", 1)[0]: x.split("=", 1)[1] for x in args.headers.split("&")} if args.headers else False
+    head = {
+        x.split("=", 1)[0]: x.split("=", 1)[1] for x in args.headers.split("&")
+    } if args.headers else False
 
     if args.mpd:
         pssh = parse(
