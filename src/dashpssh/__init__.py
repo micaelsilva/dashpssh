@@ -6,7 +6,6 @@ from urllib.parse import urlsplit
 from urllib.error import HTTPError, URLError
 from http.client import RemoteDisconnected
 
-import dashpssh.parse
 from dashpssh.httpclient import DefaultHTTPClient
 from dashpssh.parse import PsshType
 
