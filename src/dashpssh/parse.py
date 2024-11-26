@@ -4,7 +4,6 @@
 import xmltodict
 import json
 import time
-import argparse
 import logging
 from urllib.parse import urljoin, urlsplit
 from uuid import UUID
@@ -14,7 +13,7 @@ from enum import Enum
 from pymp4.parser import Box
 from pymp4.util import BoxUtil
 
-from dashpssh.httpclient import DefaultHTTPClient
+# from dashpssh.httpclient import DefaultHTTPClient
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.ERROR)
