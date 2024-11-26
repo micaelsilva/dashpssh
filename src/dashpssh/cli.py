@@ -3,7 +3,7 @@
 
 import argparse
 import dashpssh
-from dashpssh.httpclient import DefaultHTTPClient
+from dashpssh.parse import pssh_kid, PsshType
 
 
 def dump():
@@ -19,7 +19,8 @@ def dump():
         '--rotation',
         action='store_true',
         default=False,
-        help='If true look out for PSSH boxes in the fragments, used in rotation key schemes')
+        help='If true look out for PSSH boxes in the fragments, '
+             'used in rotation key schemes')
     parser.add_argument(
         '-k',
         '--kid',
@@ -29,20 +30,24 @@ def dump():
     parser.add_argument(
         '--headers',
         default=False,
-        help='Pass headers to the MPD request. Use: \'Referer=https://somesite.com/&Origin=https://somesite.com/\'')
+        help='Pass headers to the MPD request. Use: '
+             '\'Referer=https://somesite.com/&Origin=https://somesite.com/\'')
+
     args = parser.parse_args()
 
     head = {
         x.split("=", 1)[0]: x.split("=", 1)[1] for x in args.headers.split("&")
-    } if args.headers else False
+    } if args.headers else None
 
     if args.mpd:
-        pssh = dashpssh.parse.parse(
+        pssh = dashpssh.load(
             args.mpd,
-            psshtype=args.rotation,
-            http_client=DefaultHTTPClient(headers=head))
+            psshtype=(PsshType.MANIFEST
+                      if args.rotation
+                      else PsshType.FIRSTSEGMENT),
+            headers=head)
         if args.kid:
             for i in pssh:
-                print(dashpssh.parse.pssh_kid(i))
+                print(pssh_kid(i))
         else:
             print(pssh)
