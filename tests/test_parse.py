@@ -35,7 +35,7 @@ class PsshTests(unittest.TestCase):
                 psshtype=dashpssh.PsshType.INIT),
                 {'AAAAaHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAEgIARIQogGPIlZC80+D2y7Dil5B1BoPdmVyaW1hdHJpeGNsYXJvIhpyPVNQT1NQVEhEX2Rhc2hfY2Umcz0yMzIwNioFU0RfSEQ='})
 
-    def test_rotation_init(self):
+    def test_rotation_init_local(self):
         self.assertEqual(
             dashpssh.load(
                 "tests/manifests/rotation/manifest.mpd",
