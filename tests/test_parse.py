@@ -27,6 +27,7 @@ class PsshTests(unittest.TestCase):
                 "tests/manifests/fixed/manifest.mpd"),
                 {'AAAAcXBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAFEIARIQPOwbHql5ndpVluZPN+XtIBoVdmVyaW1hdHJpeGNhYmxldmlzaW9uIh5yPXZteF93aWRld2luZV9UZWxlZmVIRFImcz05NTAqAlNEOAA='})
 
+    @unittest.skip("temporarily without pssh")
     def test_rotation_init_remote(self):
         self.assertEqual(
             dashpssh.load(
