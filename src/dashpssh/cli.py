@@ -47,7 +47,6 @@ def dump():
                       else PsshType.FIRSTSEGMENT),
             headers=head)
         if args.kid:
-            for i in pssh:
-                print(pssh_kid(i))
+            print(",".join([pssh_kid(i) for i in pssh]))
         else:
             print(pssh)
