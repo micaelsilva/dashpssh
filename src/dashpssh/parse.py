@@ -67,7 +67,7 @@ def load_content(uri, http_client) -> str:
 def from_files(
         periods,
         http_client,
-        mime_type,
+        mediatype,
         base_uri,
         psshtype=PsshType.MANIFEST) -> str:
     """
@@ -77,7 +77,7 @@ def from_files(
     if isinstance(periods, list):
         periods = periods[-1]
     for ad_set in periods['AdaptationSet']:
-        if ad_set['@mimeType'] == mime_type:
+        if validate_set(ad_set, mediatype):
             rep_set = str()
             if isinstance(ad_set['Representation'], list):
                 rep_set = next(t for t in ad_set['Representation'])
@@ -167,6 +167,18 @@ def from_files(
     return pssh
 
 
+def validate_set(set_, mediatype_):
+    """
+    Check if set is from right mime type
+    """
+    if '@mimeType' in set_ and set_['@mimeType'] == mediatype_.value:
+        return True
+    elif mediatype_.value.startswith("video") and "@maxWidth" in set_:
+        return True
+    else:
+        return False
+
+
 def parse(
         content,
         base_uri=None,
@@ -188,7 +200,7 @@ def parse(
             for _, period in enumerate(periods):
                 if isinstance(period['AdaptationSet'], list):
                     for ad_set in period['AdaptationSet']:
-                        if ad_set['@mimeType'] == mediatype.value:
+                        if validate_set(ad_set, mediatype):
                             try:
                                 find_wv_pssh(ad_set, pssh)
                             except KeyError as e:
@@ -206,7 +218,7 @@ def parse(
                             logger.debug(f"Mising key {e} in representations sets. Looking for media segments next.")
         else:
             for ad_set in periods['AdaptationSet']:
-                if ad_set['@mimeType'] == mediatype.value:
+                if validate_set(ad_set, mediatype):
                     try:
                         find_wv_pssh(ad_set, pssh)
                     except KeyError as e:
@@ -223,7 +235,7 @@ def parse(
         pssh = from_files(
             periods,
             http_client,
-            mediatype.value,
+            mediatype,
             base_uri,
             psshtype)
     return pssh
