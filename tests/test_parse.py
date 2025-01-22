@@ -15,6 +15,12 @@ class PsshTests(unittest.TestCase):
                 "tests/manifests/on_manifest/adaptationset.mpd"),
                 {'AAAAZnBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAEYIARIQo2hWCauiSGufnJRmvwtINxoKdGVsZWZvbmljYSIkYTM2ODU2MDktYWJhMi00ODZiLTlmOWMtOTQ2NmJmMGI0ODM3'})
 
+    def test_fixed_manifest_no_mimetype(self):
+        self.assertEqual(
+            dashpssh.load(
+                "tests/manifests/on_manifest/no_mimetype.mpd"),
+                {'AAAAbHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAEwSEKmx1TapT04wqABVkSnN4iAaDE1lZGlhc3RyZWFtMiIkYTliMWQ1MzYtYTk0Zi00ZTMwLWE4MDAtNTU5MTI5Y2RlMjIwSOPclZsG'})
+
     def test_fixed_on_manifest_remote(self):
         self.assertEqual(
             dashpssh.load(
