@@ -85,16 +85,21 @@ def from_files(
                 rep_set = ad_set['Representation']
             # logger.debug(f"Representation: {rep_set}")
 
+            try:
+                _seg_template = ad_set['SegmentTemplate']
+            except KeyError:
+                _seg_template = rep_set['SegmentTemplate']
+
             items_params = list(
-                ad_set['SegmentTemplate']['SegmentTimeline'].items())[0][1]
+                _seg_template['SegmentTimeline'].items())[0][1]
 
             rep_set["init"] = urljoin(
                 base_uri,
-                ad_set['SegmentTemplate']['@initialization'].replace(
+                _seg_template['@initialization'].replace(
                     "$RepresentationID$",
                     rep_set['@id']))
 
-            _adset_media = ad_set['SegmentTemplate']['@media'].replace(
+            _adset_media = _seg_template['@media'].replace(
                 "$RepresentationID$",
                 rep_set['@id'])
 
