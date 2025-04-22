@@ -20,6 +20,7 @@ logging.basicConfig(level=logging.ERROR)
 
 
 WV_UUID = "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+PR_UUID = "9a04f079-9840-4286-ab92-e65be0885f95"
 
 
 class PsshType(Enum):
@@ -34,6 +35,11 @@ class MimeType(Enum):
     AUDIO = "audio/mp4"
 
 
+class DrmUuid(Enum):
+    WV = "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+    PR = "9a04f079-9840-4286-ab92-e65be0885f95"
+
+
 def pssh_kid(pssh) -> str:
     """
     Return KID from parsing the PSSH
@@ -43,12 +49,12 @@ def pssh_kid(pssh) -> str:
         return pssh_box.box_body.init_data[4:20].hex()
 
 
-def find_wv_pssh(par: dict, set_: set) -> None:
+def find_drm_pssh(par: dict, set_: set, drm=DrmUuid.WV) -> None:
     """
     Find a WV PSSH and return
     """
     for item in par['ContentProtection']:
-        if item['@schemeIdUri'].lower() == f"urn:uuid:{WV_UUID}":
+        if item['@schemeIdUri'].lower() == f"urn:uuid:{drm.value}":
             set_.add(item["cenc:pssh"]["#text"] if isinstance(item["cenc:pssh"], dict) else item["cenc:pssh"])
 
 
@@ -69,7 +75,8 @@ def from_files(
         http_client,
         mediatype,
         base_uri,
-        psshtype=PsshType.MANIFEST) -> str:
+        psshtype=PsshType.MANIFEST,
+        drm=DrmUuid.WV) -> str:
     """
     Locate files to parse and parse them to return PSSH
     """
@@ -157,7 +164,7 @@ def from_files(
                 else:
                     if box.type in [b'moov', b'moof']:
                         for pssh_box, _ in BoxUtil.find(box, b'pssh'):
-                            if pssh_box.box_body.system_ID == UUID(WV_UUID):
+                            if pssh_box.box_body.system_ID == UUID(drm.value):
                                 pssh.add(
                                     b64encode(
                                         Box.build(pssh_box)
@@ -189,7 +196,8 @@ def parse(
         base_uri=None,
         psshtype=False,
         http_client=False,
-        mediatype=MimeType.VIDEO) -> str:
+        mediatype=MimeType.VIDEO,
+        drm=DrmUuid.WV) -> str:
     """
     Parse manifest MPD and return PSSH
     """
@@ -207,30 +215,30 @@ def parse(
                     for ad_set in period['AdaptationSet']:
                         if validate_set(ad_set, mediatype):
                             try:
-                                find_wv_pssh(ad_set, pssh)
+                                find_drm_pssh(ad_set, pssh, drm)
                             except KeyError as e:
                                 logger.debug(f"Mising key {e} in adaptation set. Looking for representations next.")
                                 try:
                                     for rep_set in ad_set['Representation']:
-                                        find_wv_pssh(rep_set, pssh)
+                                        find_drm_pssh(rep_set, pssh, drm)
                                 except KeyError as e:
                                     logger.debug(f"Mising key {e} in representations sets. Looking for media segments next.")
                 else:
                     if period['AdaptationSet']['@mimeType'] == mediatype.value:
                         try:
-                            find_wv_pssh(period['AdaptationSet'], pssh)
+                            find_drm_pssh(period['AdaptationSet'], pssh, drm)
                         except KeyError as e:
                             logger.debug(f"Mising key {e} in representations sets. Looking for media segments next.")
         else:
             for ad_set in periods['AdaptationSet']:
                 if validate_set(ad_set, mediatype):
                     try:
-                        find_wv_pssh(ad_set, pssh)
+                        find_drm_pssh(ad_set, pssh, drm)
                     except KeyError as e:
                         logger.debug(f"Mising key {e} in adaptation set. Looking for representations next.")
                         try:
                             for rep_set in ad_set['Representation']:
-                                find_wv_pssh(rep_set, pssh)
+                                find_drm_pssh(rep_set, pssh, drm)
                         except KeyError as e:
                             logger.debug(f"Mising key {e} in representations sets. Looking for media segments next.")
 
@@ -242,5 +250,6 @@ def parse(
             http_client,
             mediatype,
             base_uri,
-            psshtype)
+            psshtype,
+            drm)
     return pssh

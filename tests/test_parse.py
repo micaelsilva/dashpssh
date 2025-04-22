@@ -64,6 +64,33 @@ class PsshTests(unittest.TestCase):
                 psshtype=dashpssh.PsshType.FIRSTSEGMENT),
                 {'AAAAaHBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAAEgIARIQBoqmCirRBx8WmAxl+p9SqxoPdmVyaW1hdHJpeGNsYXJvIhpyPVNQT0hCU0hEX2Rhc2hfY2Umcz0yMzIwNioFU0RfSEQ='})
 
+    def test_pr_fixed_on_manifest(self):
+        self.assertEqual(
+            dashpssh.load(
+                'https://a121aivottepl-a.akamaihd.net/gru-nitro/live/clients'
+                + '/dash/enc/jo3rmhhp2r/out/v1'
+                + '/50656942ce4e40a1be824c9d83578fe9/cenc.mpd',
+                drm=dashpssh.DrmUuid.PR),
+                {('AAADMHBzc2gAAAAAmgTweZhAQoarkuZb4IhflQAAAxAQAwAAAQABAAYDPA'
+                  'BXAFIATQBIAEUAQQBEAEUAUgAgAHgAbQBsAG4AcwA9ACIAaAB0AHQAcAA6'
+                  'AC8ALwBzAGMAaABlAG0AYQBzAC4AbQBpAGMAcgBvAHMAbwBmAHQALgBjAG'
+                  '8AbQAvAEQAUgBNAC8AMgAwADAANwAvADAAMwAvAFAAbABhAHkAUgBlAGEA'
+                  'ZAB5AEgAZQBhAGQAZQByACIAIAB2AGUAcgBzAGkAbwBuAD0AIgA0AC4AMA'
+                  'AuADAALgAwACIAPgA8AEQAQQBUAEEAPgA8AFAAUgBPAFQARQBDAFQASQBO'
+                  'AEYATwA+ADwASwBFAFkATABFAE4APgAxADYAPAAvAEsARQBZAEwARQBOAD'
+                  '4APABBAEwARwBJAEQAPgBBAEUAUwBDAFQAUgA8AC8AQQBMAEcASQBEAD4A'
+                  'PAAvAFAAUgBPAFQARQBDAFQASQBOAEYATwA+ADwASwBJAEQAPgAyAGwANQ'
+                  'BIAE4ASgBHADUAWABxADIAUwBWAEkAcgByADEAeABCAEIAQwBnAD0APQA8'
+                  'AC8ASwBJAEQAPgA8AEMASABFAEMASwBTAFUATQA+AFkAYgA1AHYAMQBjAH'
+                  'YAeQBGAG4AZwA9ADwALwBDAEgARQBDAEsAUwBVAE0APgA8AEwAQQBfAFUA'
+                  'UgBMAD4AaAB0AHQAcABzADoALwAvAHAAcgBsAHMALgBhAHQAdgAtAHAAcw'
+                  'AuAGEAbQBhAHoAbwBuAC4AYwBvAG0ALwBjAGQAcAA8AC8ATABBAF8AVQBS'
+                  'AEwAPgA8AEMAVQBTAFQATwBNAEEAVABUAFIASQBCAFUAVABFAFMAPgA8AE'
+                  'kASQBTAF8ARABSAE0AXwBWAEUAUgBTAEkATwBOAD4ANwAuADEALgAxADQA'
+                  'MwA5AC4AMAA8AC8ASQBJAFMAXwBEAFIATQBfAFYARQBSAFMASQBPAE4APg'
+                  'A8AC8AQwBVAFMAVABPAE0AQQBUAFQAUgBJAEIAVQBUAEUAUwA+ADwALwBE'
+                  'AEEAVABBAD4APAAvAFcAUgBNAEgARQBBAEQARQBSAD4A')})
+
 
 if __name__ == '__main__':
     unittest.main()
